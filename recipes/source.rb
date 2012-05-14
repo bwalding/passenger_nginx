@@ -27,7 +27,9 @@
 
 include_recipe "build-essential"
 
-nginx_prefix = node[:passenger][:nginx_prefix]
+nginx_version = node[:passenger][:nginx_version]
+nginx_flags = node[:passenger][:nginx_flags]
+nginx_prefix = node[:passnger][:nginx_prefix]
 
 case node[:platform]
 when "centos","redhat"
@@ -50,7 +52,19 @@ gem_package "passenger" do
   version node[:passenger][:version]
 end
 
+remote_file "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}.tar.gz" do
+  source "http://nginx.org/download/nginx-#{nginx_version}.tar.gz"
+  action :create_if_missing
+end
+
+bash "extract_nginx_source" do
+  cwd Chef::Config[:file_cache_path]
+  code <<-EOH
+  tar zxvf nginx-#{nginx_version}.tar.gz
+  EOH
+end
+
 execute "passenger_module" do
-  command "passenger-install-nginx-module --auto-download --auto --prefix=#{nginx_prefix}"
+  command "passenger-install-nginx-module --nginx-source-dir=#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version} --auto --prefix=#{nginx_prefix} --extra-configure-flags=#{nginx_flags}"
   creates node[:passenger][:module_path]
 end
